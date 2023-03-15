@@ -1,0 +1,8 @@
+# Function dependencies, for example:
+# package>=version
+pymongo
+Flask
+google-auth
+google-auth-oauthlib
+google-api-python-client
+python-dotenv
