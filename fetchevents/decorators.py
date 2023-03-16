@@ -1,19 +1,20 @@
-import requests
 from google.auth.exceptions import RefreshError
 from datetime import datetime, time
 from flask import (
-    request,
-    Request,
-    redirect
+    request, redirect
 )
 from mongo import (db_add_user, db_get_user_credentials)
-
+from google_utility.refresh_token import refresh_token
+from config import Config
 
 def validate_dates(function):
     def wrapper(request, *args, **kwargs):
-        request_json = request.get_json()
-        start_date_str = request_json['start_date']
-        end_date_str = request_json['end_date']
+        try:
+            request_json = request.get_json()
+            start_date_str = request_json['start_date']
+            end_date_str = request_json['end_date']
+        except:
+            raise Exception("Enter both dates")
 
         try:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
@@ -22,10 +23,15 @@ def validate_dates(function):
             if start_date > end_date:
                 raise ValueError("Start date should be before end date.")
             dates = (start_date, end_date)
-        except (ValueError, TypeError):
-            dates = None
-        
+        except ValueError as ve:
+            return f"ValueError: {str(ve)}"
+        except TypeError as te:
+            return f"TypeError: {str(te)}"
+        except Exception as e:
+            return f"Exception occurred: {str(e)}"
+
         return function(dates=dates, *args, **kwargs)
+
     return wrapper
 
 def fetchCredentials(function):
@@ -36,28 +42,16 @@ def fetchCredentials(function):
             return "Please provide email"
         try: 
             credentials = db_get_user_credentials(email)
-            if credentials == None or not credentials.valid:
-                credentials = None
-        except:
-            # return redirect()
-            return "There was a problem in fetching"
-
-        # refresh_token = credentials.refresh_token
-        # if not credentials.valid:
-
-        #     # if credentials.expired and credentials.refresh_token:
-        #     #     try:
-        #     #         # Refresh the access token using the refresh token
-        #     #         credentials.refresh("https://oauth2.googleapis.com/token")
-        #     #         # Update the credentials in the database
-        #     #         db_add_user(email, credentials)
-            #     except RefreshError:
-            #         # return redirect(url_for("login"))
-            #         return "Unable to refresh credentials"
-            # else:
-            #     # return redirect(url_for("login"))
-            #     return "Credentials have expired"
-
+            if not credentials.valid:
+                try:
+                    credentials = refresh_token(credentials)
+                    db_add_user(email, credentials)
+                except RefreshError:
+                    print(f"Error occured: {error}")
+                    return redirect(Config.SIGNIN_FUNCTION_URL)
+                
+        except Exception as error:
+            print(f"Error occured: {error}")
+            return redirect(Config.SIGNIN_FUNCTION_URL)
         return function(credentials=credentials, *args, **kwargs)
     return wrapper
-

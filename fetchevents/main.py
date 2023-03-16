@@ -1,14 +1,13 @@
 import functions_framework
 
 from flask import redirect
-from googleapiclient.errors import HttpError
 
 from decorators import (
     fetchCredentials,
     validate_dates
 )
 
-from google_calendar_utility import get_calendar_events
+from google_utility.google_calendar_utility import get_calendar_events
 from config import Config
 
 @validate_dates
@@ -29,6 +28,6 @@ def get_user_events(dates, credentials):
             f"{start_date} and {end_date}: <br/> {', '.join(event_list)} <br/> "
             f"<a href='/logout'><button>Logout</button></a>"
         )
-    except HttpError as error:
+    except Exception as error:
         # handle the error by returning a custom error message
         return "Error fetching calendar events: {}".format(str(error))
