@@ -26,7 +26,6 @@ def get_user_events(dates, credentials):
         return (
             f"Your upcoming events are between "
             f"{start_date} and {end_date}: <br/> {', '.join(event_list)} <br/> "
-            f"<a href='/logout'><button>Logout</button></a>"
         )
     except Exception as error:
         # handle the error by returning a custom error message
