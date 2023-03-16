@@ -17,6 +17,8 @@ user_schema = {
     'credentials': str
 }
 
+class MongoDBError(Exception):
+    pass
 
 def db_add_user(email, credentials):
     credentials_data = {
@@ -28,15 +30,29 @@ def db_add_user(email, credentials):
         'scopes': credentials.scopes,
         'expiry': credentials.expiry.isoformat(),
     }
-    mongo_collection.update_one({'email': email}, {'$set': {'credentials_data': credentials_data, 'credentials': credentials.to_json()}}, upsert=True)
+    
+    try:
+        mongo_collection.update_one(
+            {'email': email},
+            {'$set': {
+                'credentials_data': credentials_data,
+                'credentials': credentials.to_json()
+            }},
+            upsert=True
+        )
+    except Exception as e:
+        raise MongoDBError(f"Error adding user to MongoDB: {e}")
 
 
 def db_get_user_credentials(email):
-    user_doc = mongo_collection.find_one({'email': email})
-    if user_doc and 'credentials' in user_doc:
-        credentials_info = json.loads(user_doc['credentials'])
-        credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(credentials_info)
-    else:
-        credentials = None
+    try:
+        user_doc = mongo_collection.find_one({'email': email})
+        if user_doc and 'credentials' in user_doc:
+            credentials_info = json.loads(user_doc['credentials'])
+            credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(credentials_info)
+            return credentials
 
-    return credentials
+        else:
+            raise MongoDBError(f"User not found in the database")
+    except Exception as e:
+        raise MongoDBError(f"Error getting user credentials from MongoDB: {e}")
